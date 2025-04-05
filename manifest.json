@@ -1,0 +1,16 @@
+{
+    "manifest_version": 2,
+    "name": "Meu Bloqueador de Sites Simples",
+    "version": "1.0",
+    "description": "Bloqueia acesso a uma lista pré-definida de sites.",
+  
+    "permissions": [
+      "webRequest",        
+      "webRequestBlocking",
+      "<all_urls>"         
+    ],
+  
+    "background": {
+      "scripts": ["background.js"]
+    }
+  }
