@@ -1,8 +1,8 @@
 {
     "manifest_version": 2,
-    "name": "Meu Bloqueador de Sites Simples",
+    "name": "Schedulersite",
     "version": "1.0",
-    "description": "Bloqueia acesso a uma lista pré-definida de sites.",
+    "description": "Block sites using a schedule for you to see when you want/need.",
   
     "permissions": [
       "webRequest",        
