@@ -1,16 +1,25 @@
 {
-    "manifest_version": 2,
-    "name": "Schedulersite",
-    "version": "1.0",
-    "description": "Block sites using a schedule for you to see when you want/need.",
-  
-    "permissions": [
-      "webRequest",        
-      "webRequestBlocking",
-      "<all_urls>"         
+  "manifest_version": 2,
+  "name": "Schedulersite",
+  "version": "1.0",
+  "description": "Block sites using a schedule for you to see when you want/need.",
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking",
+    "storage",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
     ],
-  
-    "background": {
-      "scripts": ["background.js"]
-    }
+    "persistent": true
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "browser_action": {
+    "default_title": "Bloqueador de Sites"
   }
+}

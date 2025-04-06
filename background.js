@@ -1,31 +1,61 @@
-// Lista de domínios a serem bloqueados
-const blockedDomains = [
-    "exemploruim.com",
-    "siteproibido.org",
-    "distracao.net",
-    "youtube.com"
-    // Adicione mais domínios aqui
-];
+// Variáveis para armazenar as configurações
+let blockedDomains = [];
+let exceptionUrls = [];
 
-// Estrutura para URLs de exceção com janelas de tempo permitidas
-// Formato: { url: string, timeWindows: Array<{days: number[], startHour: number, endHour: number}> }
-// days: 0 = domingo, 1 = segunda, ..., 6 = sábado
-const exceptionUrls = [
-    {
-        url: "https://www.youtube.com/watch?v=frIxIZyko80",
-        timeWindows: [
-            { days: [1, 2, 3, 4, 5], startHour: 8, endHour: 17 }, // Dias úteis, 8h às 17h
-            { days: [0, 6], startHour: 10, endHour: 18 }          // Fins de semana, 10h às 14h
-        ]
-    },
-    {
-        url: "https://siteproibido.org/conteudo-educacional",
-        timeWindows: [
-            { days: [1, 3, 5], startHour: 13, endHour: 18 }       // Segunda, quarta e sexta, 13h às 18h
-        ]
+// Função para carregar as configurações do armazenamento
+function loadConfiguration() {
+    return browser.storage.local.get(['blockedDomains', 'exceptionUrls'])
+        .then(result => {
+            blockedDomains = result.blockedDomains || [];
+            exceptionUrls = result.exceptionUrls || [];
+            console.log("Configuração carregada:", { blockedDomains, exceptionUrls });
+        })
+        .catch(error => {
+            console.error("Erro ao carregar configurações:", error);
+        });
+}
+
+// Função para salvar as configurações no armazenamento
+function saveConfiguration() {
+    return browser.storage.local.set({
+        blockedDomains,
+        exceptionUrls
+    }).then(() => {
+        console.log("Configuração salva com sucesso");
+    }).catch(error => {
+        console.error("Erro ao salvar configurações:", error);
+    });
+}
+
+// Função para importar configurações de um arquivo JSON
+function importConfigFromJson(jsonData) {
+    try {
+        const config = JSON.parse(jsonData);
+
+        if (config.blockedDomains) {
+            blockedDomains = config.blockedDomains;
+        }
+
+        if (config.exceptionUrls) {
+            exceptionUrls = config.exceptionUrls;
+        }
+
+        return saveConfiguration();
+    } catch (error) {
+        console.error("Erro ao importar configuração:", error);
+        return Promise.reject(error);
     }
-    // Adicione mais exceções aqui
-];
+}
+
+// Função para exportar configurações para JSON
+function exportConfigToJson() {
+    const config = {
+        blockedDomains,
+        exceptionUrls
+    };
+
+    return JSON.stringify(config, null, 2);
+}
 
 // Função para extrair o domínio de uma URL
 function extractDomain(url) {
@@ -58,9 +88,9 @@ function formatTimeWindows(timeWindows) {
     return timeWindows.map(window => {
         const days = window.days.map(d => dayNames[d]).join(", ");
         const start = Math.floor(window.startHour) + ":" +
-            (window.startHour % 1 ? (window.startHour % 1) * 60 : "00");
+            (window.startHour % 1 ? Math.round((window.startHour % 1) * 60).toString().padStart(2, '0') : "00");
         const end = Math.floor(window.endHour) + ":" +
-            (window.endHour % 1 ? (window.endHour % 1) * 60 : "00");
+            (window.endHour % 1 ? Math.round((window.endHour % 1) * 60).toString().padStart(2, '0') : "00");
 
         return `${days} das ${start} às ${end}`;
     }).join("; ");
@@ -112,13 +142,60 @@ function blockRequest(requestDetails) {
 }
 
 // Adiciona o listener para o evento onBeforeRequest
-browser.webRequest.onBeforeRequest.addListener(
-    blockRequest,
-    {
-        urls: ["<all_urls>"],
-        types: ["main_frame"]
-    },
-    ["blocking"]
-);
+function setupWebRequestListener() {
+    browser.webRequest.onBeforeRequest.addListener(
+        blockRequest,
+        {
+            urls: ["<all_urls>"],
+            types: ["main_frame"]
+        },
+        ["blocking"]
+    );
+    console.log("Listener de bloqueio configurado");
+}
 
-console.log("Extensão de Controle de Acesso Granular Ativa!");
+// Configurar mensagens para comunicação com a interface do usuário
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "getConfig") {
+        sendResponse({
+            blockedDomains,
+            exceptionUrls
+        });
+    }
+    else if (message.action === "updateConfig") {
+        if (message.blockedDomains) {
+            blockedDomains = message.blockedDomains;
+        }
+        if (message.exceptionUrls) {
+            exceptionUrls = message.exceptionUrls;
+        }
+        saveConfiguration().then(() => {
+            sendResponse({ success: true });
+        }).catch(error => {
+            sendResponse({ success: false, error: error.toString() });
+        });
+        return true; // Indica que a resposta será enviada de forma assíncrona
+    }
+    else if (message.action === "importConfig") {
+        importConfigFromJson(message.jsonData).then(() => {
+            sendResponse({ success: true });
+        }).catch(error => {
+            sendResponse({ success: false, error: error.toString() });
+        });
+        return true; // Indica que a resposta será enviada de forma assíncrona
+    }
+    else if (message.action === "exportConfig") {
+        sendResponse({ jsonData: exportConfigToJson() });
+    }
+});
+
+// Inicialização
+function init() {
+    loadConfiguration().then(() => {
+        setupWebRequestListener();
+        console.log("Extensão de Controle de Acesso Granular Ativa!");
+    });
+}
+
+// Iniciar a extensão
+init();
