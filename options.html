@@ -4,6 +4,60 @@
     <meta charset="UTF-8" />
     <title>Configurações de Bloqueio</title>
     <style>
+      /* Estilos para toasts */
+      .toast-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 2000;
+      }
+
+      .toast {
+        min-width: 250px;
+        margin-top: 10px;
+        padding: 15px;
+        border-radius: 4px;
+        color: white;
+        font-weight: 500;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.3s ease-in-out;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .toast.success {
+        background-color: #4caf50;
+      }
+
+      .toast.error {
+        background-color: #f44336;
+      }
+
+      .toast.info {
+        background-color: #2196f3;
+      }
+
+      .toast-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        margin-left: 10px;
+        padding: 0 5px;
+      }
+
+      .toast-message {
+        flex-grow: 1;
+      }
       body {
         font-family: Arial, sans-serif;
         max-width: 800px;
@@ -37,6 +91,12 @@
       button:hover {
         background-color: #3367d6;
       }
+      button.delete {
+        background-color: #d32f2f;
+      }
+      button.delete:hover {
+        background-color: #b71c1c;
+      }
       .exception-item {
         border: 1px solid #eee;
         padding: 10px;
@@ -52,6 +112,94 @@
       }
       #importExport {
         margin-top: 30px;
+      }
+
+      /* Estilos para os modais */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+      .modal-content {
+        background-color: white;
+        margin: 10% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 60%;
+        max-width: 600px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+      }
+      .modal-header h2 {
+        margin: 0;
+      }
+      .close {
+        color: #aaa;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+      }
+      .close:hover {
+        color: #333;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      .form-group input[type="text"],
+      .form-group input[type="number"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      .time-windows-container {
+        margin-top: 20px;
+        border: 1px solid #eee;
+        padding: 10px;
+        border-radius: 4px;
+      }
+      .time-window-item {
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+      }
+      .day-checkbox {
+        margin-right: 10px;
+      }
+      .time-inputs {
+        display: flex;
+        align-items: center;
+        margin-top: 10px;
+      }
+      .time-inputs input {
+        width: 80px;
+        margin: 0 10px;
+      }
+      .modal-footer {
+        margin-top: 20px;
+        text-align: right;
+      }
+      .add-time-window {
+        margin-top: 10px;
       }
     </style>
   </head>
@@ -77,6 +225,68 @@
       <button id="importConfig">Importar Configurações</button>
       <input type="file" id="importFile" style="display: none" accept=".json" />
     </div>
+
+    <!-- Modal para adicionar/editar exceção -->
+    <div id="exceptionModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modalTitle">Adicionar Exceção</h2>
+          <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+          <form id="exceptionForm">
+            <input type="hidden" id="exceptionIndex" value="-1" />
+
+            <div class="form-group">
+              <label for="exceptionUrl">URL Completa:</label>
+              <input
+                type="text"
+                id="exceptionUrl"
+                placeholder="https://exemplo.com/pagina-especifica"
+                required
+              />
+            </div>
+
+            <div class="time-windows-container">
+              <h3>Janelas de Tempo</h3>
+              <p>Defina os dias e horários em que esta URL será acessível.</p>
+
+              <div id="timeWindowsList"></div>
+
+              <button type="button" class="add-time-window" id="addTimeWindow">
+                + Adicionar Janela de Tempo
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="cancelException">Cancelar</button>
+          <button type="button" id="saveException">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de confirmação para exclusão -->
+    <div id="deleteModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Confirmar Exclusão</h2>
+          <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+          <p>Tem certeza que deseja excluir esta exceção?</p>
+          <p id="deleteUrlDisplay"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="cancelDelete">Cancelar</button>
+          <button type="button" class="delete" id="confirmDelete">
+            Excluir
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- Contêiner para toasts -->
+    <div class="toast-container" id="toastContainer"></div>
 
     <script src="options.js"></script>
   </body>
