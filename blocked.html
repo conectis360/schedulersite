@@ -30,6 +30,29 @@
         font-size: 60px;
         margin-bottom: 20px;
       }
+      .blocked-url {
+        font-family: monospace;
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 20px 0;
+        word-break: break-all;
+      }
+      .check-again {
+        margin-top: 30px;
+      }
+      button {
+        background-color: #4285f4;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background-color: #3367d6;
+      }
     </style>
   </head>
   <body>
@@ -37,16 +60,58 @@
       <div class="icon">🚫</div>
       <h1>Acesso Bloqueado</h1>
       <p id="message">Este site está bloqueado.</p>
+
+      <div class="blocked-url" id="blockedUrl"></div>
+
+      <div class="check-again">
+        <button id="checkAgainButton">Verificar Novamente</button>
+      </div>
     </div>
 
     <script>
-      // Obter a mensagem da URL
+      // Obter parâmetros da URL
       const urlParams = new URLSearchParams(window.location.search);
       const message = urlParams.get("message");
+      const blockedUrl = urlParams.get("url");
 
+      // Exibir mensagem e URL bloqueada
       if (message) {
         document.getElementById("message").textContent = message;
       }
+
+      if (blockedUrl) {
+        document.getElementById("blockedUrl").textContent = blockedUrl;
+      } else {
+        document.getElementById("blockedUrl").style.display = "none";
+      }
+
+      // Botão para verificar novamente
+      document
+        .getElementById("checkAgainButton")
+        .addEventListener("click", () => {
+          if (blockedUrl) {
+            // Verificar se o acesso agora é permitido
+            browser.runtime
+              .sendMessage({
+                action: "checkUrl",
+                url: blockedUrl,
+              })
+              .then((result) => {
+                if (!result.blocked) {
+                  // Se não estiver mais bloqueado, redirecionar para a URL
+                  window.location.href = blockedUrl;
+                } else {
+                  // Atualizar a mensagem se ainda estiver bloqueado
+                  document.getElementById("message").textContent =
+                    result.message;
+                  alert("Este site ainda está bloqueado.");
+                }
+              })
+              .catch((error) => {
+                console.error("Erro ao verificar URL:", error);
+              });
+          }
+        });
     </script>
   </body>
 </html>

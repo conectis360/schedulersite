@@ -1,31 +1,114 @@
+// Sistema de Toast para notificações
+function showToast(message, type = 'info', duration = 3000) {
+    const toastContainer = document.getElementById('toastContainer');
+
+    // Criar elemento toast
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    // Conteúdo do toast
+    const messageSpan = document.createElement('span');
+    messageSpan.className = 'toast-message';
+    messageSpan.textContent = message;
+    toast.appendChild(messageSpan);
+
+    // Botão de fechar
+    const closeButton = document.createElement('button');
+    closeButton.className = 'toast-close';
+    closeButton.innerHTML = '&times;';
+    closeButton.addEventListener('click', () => {
+        removeToast(toast);
+    });
+    toast.appendChild(closeButton);
+
+    // Adicionar ao container
+    toastContainer.appendChild(toast);
+
+    // Mostrar o toast (com delay para permitir a animação)
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+
+    // Configurar remoção automática
+    setTimeout(() => {
+        removeToast(toast);
+    }, duration);
+
+    return toast;
+}
+
+function removeToast(toast) {
+    // Remover classe show para iniciar animação de saída
+    toast.classList.remove('show');
+
+    // Remover elemento após a animação
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 300);
+}
+
+// Funções de conveniência para diferentes tipos de toast
+function showSuccessToast(message, duration = 3000) {
+    return showToast(message, 'success', duration);
+}
+
+function showErrorToast(message, duration = 4000) {
+    return showToast(message, 'error', duration);
+}
+
+function showInfoToast(message, duration = 3000) {
+    return showToast(message, 'info', duration);
+}
+
 // Elementos da interface
-const blockedDomainsTextarea = document.getElementById('blockedDomains');
-const saveBlockedDomainsButton = document.getElementById('saveBlockedDomains');
-const exceptionsListDiv = document.getElementById('exceptionsList');
+const addBlockedDomainButton = document.getElementById('addBlockedDomain');
 const addExceptionButton = document.getElementById('addException');
 const exportConfigButton = document.getElementById('exportConfig');
 const importConfigButton = document.getElementById('importConfig');
 const importFileInput = document.getElementById('importFile');
+const checkAllTabsButton = document.getElementById('checkAllTabs');
 
-// Elementos dos modais
+// Elementos dos modais de domínio
+const domainModal = document.getElementById('domainModal');
+const domainModalTitle = document.getElementById('domainModalTitle');
+const domainForm = document.getElementById('domainForm');
+const domainIndexInput = document.getElementById('domainIndex');
+const domainNameInput = document.getElementById('domainName');
+const domainTimeWindowsList = document.getElementById('domainTimeWindowsList');
+const addDomainTimeWindowButton = document.getElementById('addDomainTimeWindow');
+const saveDomainButton = document.getElementById('saveDomain');
+const cancelDomainButton = document.getElementById('cancelDomain');
+
+// Elementos dos modais de exceção
 const exceptionModal = document.getElementById('exceptionModal');
-const modalTitle = document.getElementById('modalTitle');
+const exceptionModalTitle = document.getElementById('exceptionModalTitle');
 const exceptionForm = document.getElementById('exceptionForm');
 const exceptionIndexInput = document.getElementById('exceptionIndex');
 const exceptionUrlInput = document.getElementById('exceptionUrl');
-const timeWindowsList = document.getElementById('timeWindowsList');
-const addTimeWindowButton = document.getElementById('addTimeWindow');
+const exceptionTimeWindowsList = document.getElementById('exceptionTimeWindowsList');
+const addExceptionTimeWindowButton = document.getElementById('addExceptionTimeWindow');
 const saveExceptionButton = document.getElementById('saveException');
 const cancelExceptionButton = document.getElementById('cancelException');
 
+// Elementos do modal de exclusão
 const deleteModal = document.getElementById('deleteModal');
-const deleteUrlDisplay = document.getElementById('deleteUrlDisplay');
+const deleteItemDisplay = document.getElementById('deleteItemDisplay');
 const confirmDeleteButton = document.getElementById('confirmDelete');
 const cancelDeleteButton = document.getElementById('cancelDelete');
+
+// Variáveis para armazenar as instâncias do DataTable
+let blockedDomainsTable;
+let exceptionsTable;
+
+// Variável para armazenar o tipo de item sendo excluído
+let deleteItemType = '';
 
 // Fechar modais ao clicar no X
 document.querySelectorAll('.close').forEach(closeBtn => {
     closeBtn.addEventListener('click', () => {
+        domainModal.style.display = 'none';
         exceptionModal.style.display = 'none';
         deleteModal.style.display = 'none';
     });
@@ -33,6 +116,9 @@ document.querySelectorAll('.close').forEach(closeBtn => {
 
 // Fechar modais ao clicar fora deles
 window.addEventListener('click', (event) => {
+    if (event.target === domainModal) {
+        domainModal.style.display = 'none';
+    }
     if (event.target === exceptionModal) {
         exceptionModal.style.display = 'none';
     }
@@ -41,14 +127,180 @@ window.addEventListener('click', (event) => {
     }
 });
 
+// Formatar janelas de tempo para exibição
+function formatTimeWindows(timeWindows) {
+    if (!timeWindows || timeWindows.length === 0) {
+        return "Sempre bloqueado";
+    }
+
+    const dayNames = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+    return timeWindows.map(window => {
+        const days = window.days.map(d => dayNames[d]).join(", ");
+        const start = Math.floor(window.startHour) + ":" +
+            (window.startHour % 1 ? Math.round((window.startHour % 1) * 60).toString().padStart(2, '0') : "00");
+        const end = Math.floor(window.endHour) + ":" +
+            (window.endHour % 1 ? Math.round((window.endHour % 1) * 60).toString().padStart(2, '0') : "00");
+
+        return `${days} das ${start} às ${end}`;
+    }).join("<br>");
+}
+
+// Inicializar DataTable para domínios bloqueados
+function initBlockedDomainsTable(domains) {
+    // Destruir tabela existente se houver
+    if (blockedDomainsTable) {
+        blockedDomainsTable.destroy();
+    }
+
+    // Preparar dados para a tabela
+    const tableData = domains.map((domain, index) => {
+        return [
+            domain.domain,
+            formatTimeWindows(domain.timeWindows),
+            `<div class="action-buttons">
+                <button class="edit-domain-btn" data-index="${index}">Editar</button>
+                <button class="delete-domain-btn delete" data-index="${index}">Excluir</button>
+            </div>`
+        ];
+    });
+
+    // Inicializar DataTable
+    blockedDomainsTable = jQuery('#blockedDomainsTable').DataTable({
+        data: tableData,
+        columns: [
+            { title: "Domínio" },
+            { title: "Horários de Bloqueio" },
+            { title: "Ações", width: "120px" }
+        ],
+        language: {
+            "sEmptyTable": "Nenhum registro encontrado",
+            "sInfo": "Mostrando de _START_ até _END_ de _TOTAL_ registros",
+            "sInfoEmpty": "Mostrando 0 até 0 de 0 registros",
+            "sInfoFiltered": "(Filtrados de _MAX_ registros)",
+            "sInfoPostFix": "",
+            "sInfoThousands": ".",
+            "sLengthMenu": "_MENU_ resultados por página",
+            "sLoadingRecords": "Carregando...",
+            "sProcessing": "Processando...",
+            "sZeroRecords": "Nenhum registro encontrado",
+            "sSearch": "Pesquisar",
+            "oPaginate": {
+                "sNext": "Próximo",
+                "sPrevious": "Anterior",
+                "sFirst": "Primeiro",
+                "sLast": "Último"
+            },
+            "oAria": {
+                "sSortAscending": ": Ordenar colunas de forma ascendente",
+                "sSortDescending": ": Ordenar colunas de forma descendente"
+            }
+        },
+        responsive: true,
+        order: [[0, 'asc']], // Ordenar por domínio
+        columnDefs: [
+            { targets: 1, orderable: false }, // Desabilitar ordenação na coluna de horários
+            { targets: 2, orderable: false } // Desabilitar ordenação na coluna de ações
+        ]
+    });
+
+    // Adicionar event listeners para os botões de ação
+    jQuery('#blockedDomainsTable').on('click', '.edit-domain-btn', function () {
+        const index = jQuery(this).data('index');
+        openEditDomainModal(index);
+    });
+
+    jQuery('#blockedDomainsTable').on('click', '.delete-domain-btn', function () {
+        const index = jQuery(this).data('index');
+        openDeleteDomainModal(index);
+    });
+}
+
+// Inicializar DataTable para exceções
+function initExceptionsTable(exceptions) {
+    // Destruir tabela existente se houver
+    if (exceptionsTable) {
+        exceptionsTable.destroy();
+    }
+
+    // Preparar dados para a tabela
+    const tableData = exceptions.map((exception, index) => {
+        return [
+            exception.url,
+            formatTimeWindows(exception.timeWindows),
+            `<div class="action-buttons">
+                <button class="edit-exception-btn" data-index="${index}">Editar</button>
+                <button class="delete-exception-btn delete" data-index="${index}">Excluir</button>
+            </div>`
+        ];
+    });
+
+    // Inicializar DataTable
+    exceptionsTable = jQuery('#exceptionsTable').DataTable({
+        data: tableData,
+        columns: [
+            { title: "URL" },
+            { title: "Horários Permitidos" },
+            { title: "Ações", width: "120px" }
+        ],
+        language: {
+            "sEmptyTable": "Nenhum registro encontrado",
+            "sInfo": "Mostrando de _START_ até _END_ de _TOTAL_ registros",
+            "sInfoEmpty": "Mostrando 0 até 0 de 0 registros",
+            "sInfoFiltered": "(Filtrados de _MAX_ registros)",
+            "sInfoPostFix": "",
+            "sInfoThousands": ".",
+            "sLengthMenu": "_MENU_ resultados por página",
+            "sLoadingRecords": "Carregando...",
+            "sProcessing": "Processando...",
+            "sZeroRecords": "Nenhum registro encontrado",
+            "sSearch": "Pesquisar",
+            "oPaginate": {
+                "sNext": "Próximo",
+                "sPrevious": "Anterior",
+                "sFirst": "Primeiro",
+                "sLast": "Último"
+            },
+            "oAria": {
+                "sSortAscending": ": Ordenar colunas de forma ascendente",
+                "sSortDescending": ": Ordenar colunas de forma descendente"
+            }
+        },
+        responsive: true,
+        order: [[0, 'asc']], // Ordenar por URL
+        columnDefs: [
+            { targets: 1, orderable: false }, // Desabilitar ordenação na coluna de horários
+            { targets: 2, orderable: false } // Desabilitar ordenação na coluna de ações
+        ]
+    });
+
+    // Adicionar event listeners para os botões de ação
+    jQuery('#exceptionsTable').on('click', '.edit-exception-btn', function () {
+        const index = jQuery(this).data('index');
+        openEditExceptionModal(index);
+    });
+
+    jQuery('#exceptionsTable').on('click', '.delete-exception-btn', function () {
+        const index = jQuery(this).data('index');
+        openDeleteExceptionModal(index);
+    });
+}
+
+// Carregar configurações atuais
 function loadCurrentConfig() {
     browser.runtime.sendMessage({ action: "getConfig" })
         .then(config => {
-            // Preencher domínios bloqueados  
-            blockedDomainsTextarea.value = config.blockedDomains.join('\n');
+            // Converter domínios simples para o novo formato se necessário
+            const formattedDomains = config.blockedDomains.map(domain => {
+                if (typeof domain === 'string') {
+                    return { domain: domain };
+                }
+                return domain;
+            });
 
-            // Preencher exceções  
-            renderExceptionsList(config.exceptionUrls);
+            // Inicializar DataTables
+            initBlockedDomainsTable(formattedDomains);
+            initExceptionsTable(config.exceptionUrls || []);
         })
         .catch(error => {
             console.error("Erro ao carregar configurações:", error);
@@ -56,91 +308,69 @@ function loadCurrentConfig() {
         });
 }
 
-// Renderizar lista de exceções
-function renderExceptionsList(exceptions) {
-    exceptionsListDiv.innerHTML = '';
+// Abrir modal para adicionar novo domínio bloqueado
+addBlockedDomainButton.addEventListener('click', () => {
+    domainModalTitle.textContent = 'Adicionar Domínio Bloqueado';
+    domainIndexInput.value = -1;
+    domainNameInput.value = '';
+    domainTimeWindowsList.innerHTML = '';
 
-    if (exceptions.length === 0) {
-        exceptionsListDiv.innerHTML = '<p>Nenhuma exceção configurada.</p>';
-        return;
-    }
+    domainModal.style.display = 'block';
+});
 
-    exceptions.forEach((exception, index) => {
-        const exceptionDiv = document.createElement('div');
-        exceptionDiv.className = 'exception-item';
+// Abrir modal para editar domínio bloqueado
+function openEditDomainModal(index) {
+    browser.runtime.sendMessage({ action: "getConfig" })
+        .then(config => {
+            const domain = config.blockedDomains[index];
 
-        // URL da exceção
-        const urlDiv = document.createElement('div');
-        urlDiv.innerHTML = `<strong>URL:</strong> ${exception.url}`;
-        exceptionDiv.appendChild(urlDiv);
+            domainModalTitle.textContent = 'Editar Domínio Bloqueado';
+            domainIndexInput.value = index;
+            domainNameInput.value = domain.domain;
 
-        // Janelas de tempo
-        const timeWindowsDiv = document.createElement('div');
-        timeWindowsDiv.innerHTML = '<strong>Horários permitidos:</strong>';
-        exceptionDiv.appendChild(timeWindowsDiv);
+            domainTimeWindowsList.innerHTML = '';
 
-        exception.timeWindows.forEach((window, windowIndex) => {
-            const windowDiv = document.createElement('div');
-            windowDiv.className = 'time-window';
-
-            const dayNames = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-            const days = window.days.map(d => dayNames[d]).join(", ");
-
-            windowDiv.textContent = `${days} das ${window.startHour}h às ${window.endHour}h`;
-            timeWindowsDiv.appendChild(windowDiv);
-        });
-
-        // Botões de ação
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'actions';
-
-        const editButton = document.createElement('button');
-        editButton.textContent = 'Editar';
-        editButton.onclick = () => openEditExceptionModal(index);
-        actionsDiv.appendChild(editButton);
-
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'Excluir';
-        deleteButton.className = 'delete';
-        deleteButton.onclick = () => openDeleteModal(index);
-        actionsDiv.appendChild(deleteButton);
-
-        exceptionDiv.appendChild(actionsDiv);
-        exceptionsListDiv.appendChild(exceptionDiv);
-    });
-}
-
-// Salvar domínios bloqueados  
-saveBlockedDomainsButton.addEventListener('click', () => {
-    const domains = blockedDomainsTextarea.value
-        .split('\n')
-        .map(domain => domain.trim())
-        .filter(domain => domain.length > 0);
-
-    browser.runtime.sendMessage({
-        action: "updateConfig",
-        blockedDomains: domains
-    })
-        .then(response => {
-            if (response.success) {
-                showSuccessToast("Domínios bloqueados salvos com sucesso!");
-            } else {
-                showErrorToast("Erro ao salvar domínios: " + response.error);
+            // Adicionar janelas de tempo existentes
+            if (domain.timeWindows && domain.timeWindows.length > 0) {
+                domain.timeWindows.forEach(window => {
+                    addTimeWindow(domainTimeWindowsList, window);
+                });
             }
+
+            domainModal.style.display = 'block';
         })
         .catch(error => {
-            console.error("Erro ao salvar domínios:", error);
-            showErrorToast("Erro ao salvar domínios: " + error);
+            console.error("Erro ao carregar domínio para edição:", error);
+            showErrorToast("Erro ao carregar domínio para edição: " + error);
         });
-});
+}
+
+// Abrir modal para excluir domínio bloqueado
+function openDeleteDomainModal(index) {
+    browser.runtime.sendMessage({ action: "getConfig" })
+        .then(config => {
+            const domain = config.blockedDomains[index];
+            deleteItemDisplay.textContent = domain.domain;
+
+            // Armazenar o índice e tipo no botão de confirmação
+            confirmDeleteButton.dataset.index = index;
+            deleteItemType = 'domain';
+
+            deleteModal.style.display = 'block';
+        })
+        .catch(error => {
+            console.error("Erro ao carregar domínio para exclusão:", error);
+            showErrorToast("Erro ao carregar domínio para exclusão: " + error);
+        });
+}
 
 // Abrir modal para adicionar nova exceção
 addExceptionButton.addEventListener('click', () => {
-    modalTitle.textContent = 'Adicionar Exceção';
+    exceptionModalTitle.textContent = 'Adicionar Exceção';
     exceptionIndexInput.value = -1;
     exceptionUrlInput.value = '';
-    timeWindowsList.innerHTML = '';
-    addTimeWindow(); // Adiciona uma janela de tempo vazia
+    exceptionTimeWindowsList.innerHTML = '';
+    addTimeWindow(exceptionTimeWindowsList); // Adiciona uma janela de tempo vazia
 
     exceptionModal.style.display = 'block';
 });
@@ -151,45 +381,46 @@ function openEditExceptionModal(index) {
         .then(config => {
             const exception = config.exceptionUrls[index];
 
-            modalTitle.textContent = 'Editar Exceção';
+            exceptionModalTitle.textContent = 'Editar Exceção';
             exceptionIndexInput.value = index;
             exceptionUrlInput.value = exception.url;
 
-            timeWindowsList.innerHTML = '';
+            exceptionTimeWindowsList.innerHTML = '';
 
             // Adicionar janelas de tempo existentes
             exception.timeWindows.forEach(window => {
-                addTimeWindow(window);
+                addTimeWindow(exceptionTimeWindowsList, window);
             });
 
             exceptionModal.style.display = 'block';
         })
         .catch(error => {
             console.error("Erro ao carregar exceção para edição:", error);
-            alert("Erro ao carregar exceção para edição: " + error);
+            showErrorToast("Erro ao carregar exceção para edição: " + error);
         });
 }
 
 // Abrir modal de confirmação para excluir exceção
-function openDeleteModal(index) {
+function openDeleteExceptionModal(index) {
     browser.runtime.sendMessage({ action: "getConfig" })
         .then(config => {
             const exception = config.exceptionUrls[index];
-            deleteUrlDisplay.textContent = exception.url;
+            deleteItemDisplay.textContent = exception.url;
 
-            // Armazenar o índice no botão de confirmação
+            // Armazenar o índice e tipo no botão de confirmação
             confirmDeleteButton.dataset.index = index;
+            deleteItemType = 'exception';
 
             deleteModal.style.display = 'block';
         })
         .catch(error => {
             console.error("Erro ao carregar exceção para exclusão:", error);
-            alert("Erro ao carregar exceção para exclusão: " + error);
+            showErrorToast("Erro ao carregar exceção para exclusão: " + error);
         });
 }
 
 // Adicionar uma nova janela de tempo ao formulário
-function addTimeWindow(timeWindow = null) {
+function addTimeWindow(container, timeWindow = null) {
     const windowItem = document.createElement('div');
     windowItem.className = 'time-window-item';
 
@@ -265,31 +496,13 @@ function addTimeWindow(timeWindow = null) {
 
     windowItem.appendChild(removeButton);
 
-    timeWindowsList.appendChild(windowItem);
+    container.appendChild(windowItem);
 }
 
-// Adicionar nova janela de tempo ao clicar no botão
-addTimeWindowButton.addEventListener('click', () => {
-    addTimeWindow();
-});
-
-// Cancelar adição/edição de exceção
-cancelExceptionButton.addEventListener('click', () => {
-    exceptionModal.style.display = 'none';
-});
-
-// Salvar exceção  
-saveExceptionButton.addEventListener('click', () => {
-    const url = exceptionUrlInput.value.trim();
-
-    if (!url) {
-        showErrorToast("Por favor, informe a URL da exceção.");
-        return;
-    }
-
-    // Coletar janelas de tempo  
+// Coletar janelas de tempo de um container
+function collectTimeWindows(container) {
     const timeWindows = [];
-    const timeWindowItems = timeWindowsList.querySelectorAll('.time-window-item');
+    const timeWindowItems = container.querySelectorAll('.time-window-item');
 
     for (const item of timeWindowItems) {
         const days = [];
@@ -300,16 +513,14 @@ saveExceptionButton.addEventListener('click', () => {
         });
 
         if (days.length === 0) {
-            showErrorToast("Cada janela de tempo deve ter pelo menos um dia selecionado.");
-            return;
+            throw new Error("Cada janela de tempo deve ter pelo menos um dia selecionado.");
         }
 
         const startHour = parseFloat(item.querySelector('input[name="startHour"]').value);
         const endHour = parseFloat(item.querySelector('input[name="endHour"]').value);
 
         if (isNaN(startHour) || isNaN(endHour) || startHour >= endHour) {
-            showErrorToast("Horários inválidos. O horário de início deve ser menor que o horário de fim.");
-            return;
+            throw new Error("Horários inválidos. O horário de início deve ser menor que o horário de fim.");
         }
 
         timeWindows.push({
@@ -319,15 +530,116 @@ saveExceptionButton.addEventListener('click', () => {
         });
     }
 
-    if (timeWindows.length === 0) {
-        showErrorToast("Adicione pelo menos uma janela de tempo.");
+    return timeWindows;
+}
+
+// Adicionar nova janela de tempo ao clicar nos botões
+addDomainTimeWindowButton.addEventListener('click', () => {
+    addTimeWindow(domainTimeWindowsList);
+});
+
+addExceptionTimeWindowButton.addEventListener('click', () => {
+    addTimeWindow(exceptionTimeWindowsList);
+});
+
+// Cancelar adição/edição de domínio
+cancelDomainButton.addEventListener('click', () => {
+    domainModal.style.display = 'none';
+});
+
+// Salvar domínio bloqueado
+saveDomainButton.addEventListener('click', () => {
+    const domain = domainNameInput.value.trim();
+
+    if (!domain) {
+        showErrorToast("Por favor, informe o domínio a ser bloqueado.");
         return;
     }
 
-    // Obter o índice da exceção que está sendo editada  
+    // Coletar janelas de tempo (se houver)
+    let timeWindows = [];
+    try {
+        if (domainTimeWindowsList.querySelectorAll('.time-window-item').length > 0) {
+            timeWindows = collectTimeWindows(domainTimeWindowsList);
+        }
+    } catch (error) {
+        showErrorToast(error.message);
+        return;
+    }
+
+    // Obter o índice do domínio que está sendo editado
+    const currentIndex = parseInt(domainIndexInput.value);
+
+    // Obter configuração atual
+    browser.runtime.sendMessage({ action: "getConfig" })
+        .then(config => {
+            const domains = config.blockedDomains || [];
+
+            const newDomain = {
+                domain,
+                timeWindows
+            };
+
+            if (currentIndex >= 0) {
+                // Editar domínio existente
+                domains[currentIndex] = newDomain;
+            } else {
+                // Adicionar novo domínio
+                domains.push(newDomain);
+            }
+
+            return browser.runtime.sendMessage({
+                action: "updateConfig",
+                blockedDomains: domains
+            });
+        })
+        .then(response => {
+            if (response.success) {
+                domainModal.style.display = 'none';
+                loadCurrentConfig();
+                showSuccessToast(currentIndex >= 0 ? "Domínio atualizado com sucesso!" : "Domínio adicionado com sucesso!");
+            } else {
+                showErrorToast("Erro ao salvar domínio: " + response.error);
+            }
+        })
+        .catch(error => {
+            console.error("Erro ao salvar domínio:", error);
+            showErrorToast("Erro ao salvar domínio: " + error);
+        });
+});
+
+// Cancelar adição/edição de exceção
+cancelExceptionButton.addEventListener('click', () => {
+    exceptionModal.style.display = 'none';
+});
+
+// Salvar exceção
+saveExceptionButton.addEventListener('click', () => {
+    const url = exceptionUrlInput.value.trim();
+
+    if (!url) {
+        showErrorToast("Por favor, informe a URL da exceção.");
+        return;
+    }
+
+    // Coletar janelas de tempo
+    let timeWindows = [];
+    try {
+        timeWindows = collectTimeWindows(exceptionTimeWindowsList);
+
+        if (timeWindows.length === 0) {
+            showErrorToast("Adicione pelo menos uma janela de tempo.");
+            return;
+        }
+    } catch (error) {
+        showErrorToast(error.message);
+        return;
+    }
+
+    // Obter o índice da exceção que está sendo editada
     const currentIndex = parseInt(exceptionIndexInput.value);
 
-    // Obter configuração atual  
+    // Obter configuração atual
     browser.runtime.sendMessage({ action: "getConfig" })
         .then(config => {
             const exceptions = config.exceptionUrls || [];
@@ -338,10 +650,10 @@ saveExceptionButton.addEventListener('click', () => {
             };
 
             if (currentIndex >= 0) {
-                // Editar exceção existente  
+                // Editar exceção existente
                 exceptions[currentIndex] = newException;
             } else {
-                // Adicionar nova exceção  
+                // Adicionar nova exceção
                 exceptions.push(newException);
             }
 
@@ -370,32 +682,44 @@ cancelDeleteButton.addEventListener('click', () => {
     deleteModal.style.display = 'none';
 });
 
-// Confirmar exclusão  
+// Confirmar exclusão
 confirmDeleteButton.addEventListener('click', () => {
     const index = parseInt(confirmDeleteButton.dataset.index);
 
     browser.runtime.sendMessage({ action: "getConfig" })
         .then(config => {
-            const exceptions = config.exceptionUrls || [];
-            exceptions.splice(index, 1);
+            if (deleteItemType === 'domain') {
+                const domains = config.blockedDomains || [];
+                domains.splice(index, 1);
 
-            return browser.runtime.sendMessage({
-                action: "updateConfig",
-                exceptionUrls: exceptions
-            });
+                return browser.runtime.sendMessage({
+                    action: "updateConfig",
+                    blockedDomains: domains
+                });
+            } else if (deleteItemType === 'exception') {
+                const exceptions = config.exceptionUrls || [];
+                exceptions.splice(index, 1);
+
+                return browser.runtime.sendMessage({
+                    action: "updateConfig",
+                    exceptionUrls: exceptions
+                });
+            }
         })
         .then(response => {
             if (response.success) {
                 deleteModal.style.display = 'none';
                 loadCurrentConfig();
-                showSuccessToast("Exceção excluída com sucesso!");
+                showSuccessToast(deleteItemType === 'domain' ?
+                    "Domínio excluído com sucesso!" :
+                    "Exceção excluída com sucesso!");
             } else {
-                showErrorToast("Erro ao excluir exceção: " + response.error);
+                showErrorToast("Erro ao excluir item: " + response.error);
             }
         })
         .catch(error => {
-            console.error("Erro ao excluir exceção:", error);
-            showErrorToast("Erro ao excluir exceção: " + error);
+            console.error("Erro ao excluir item:", error);
+            showErrorToast("Erro ao excluir item: " + error);
         });
 });
 
@@ -417,7 +741,7 @@ exportConfigButton.addEventListener('click', () => {
         })
         .catch(error => {
             console.error("Erro ao exportar configurações:", error);
-            alert("Erro ao exportar configurações: " + error);
+            showErrorToast("Erro ao exportar configurações: " + error);
         });
 });
 
@@ -426,7 +750,6 @@ importConfigButton.addEventListener('click', () => {
     importFileInput.click();
 });
 
-// Importar configurações  
 importFileInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -455,69 +778,19 @@ importFileInput.addEventListener('change', (event) => {
     reader.readAsText(file);
 });
 
-// Sistema de Toast para notificações
-function showToast(message, type = 'info', duration = 3000) {
-    const toastContainer = document.getElementById('toastContainer');
-
-    // Criar elemento toast
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-
-    // Conteúdo do toast
-    const messageSpan = document.createElement('span');
-    messageSpan.className = 'toast-message';
-    messageSpan.textContent = message;
-    toast.appendChild(messageSpan);
-
-    // Botão de fechar
-    const closeButton = document.createElement('button');
-    closeButton.className = 'toast-close';
-    closeButton.innerHTML = '&times;';
-    closeButton.addEventListener('click', () => {
-        removeToast(toast);
-    });
-    toast.appendChild(closeButton);
-
-    // Adicionar ao container
-    toastContainer.appendChild(toast);
-
-    // Mostrar o toast (com delay para permitir a animação)
-    setTimeout(() => {
-        toast.classList.add('show');
-    }, 10);
-
-    // Configurar remoção automática
-    setTimeout(() => {
-        removeToast(toast);
-    }, duration);
-
-    return toast;
-}
-
-function removeToast(toast) {
-    // Remover classe show para iniciar animação de saída
-    toast.classList.remove('show');
-
-    // Remover elemento após a animação
-    setTimeout(() => {
-        if (toast.parentNode) {
-            toast.parentNode.removeChild(toast);
-        }
-    }, 300);
-}
-
-// Funções de conveniência para diferentes tipos de toast
-function showSuccessToast(message, duration = 3000) {
-    return showToast(message, 'success', duration);
-}
-
-function showErrorToast(message, duration = 4000) {
-    return showToast(message, 'error', duration);
-}
-
-function showInfoToast(message, duration = 3000) {
-    return showToast(message, 'info', duration);
-}
+// Verificar todas as abas abertas
+checkAllTabsButton.addEventListener('click', () => {
+    browser.runtime.sendMessage({ action: "checkAllTabs" })
+        .then(response => {
+            if (response.success) {
+                showInfoToast("Verificação de abas concluída");
+            }
+        })
+        .catch(error => {
+            console.error("Erro ao verificar abas:", error);
+            showErrorToast("Erro ao verificar abas: " + error);
+        });
+});
 
 // Carregar configurações ao abrir a página
 document.addEventListener('DOMContentLoaded', loadCurrentConfig);

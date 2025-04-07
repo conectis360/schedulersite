@@ -3,64 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <title>Configurações de Bloqueio</title>
+
+    <!-- jQuery via CDN -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- DataTables CSS via CDN -->
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css"
+    />
+
+    <!-- DataTables JS via CDN -->
+    <script
+      type="text/javascript"
+      src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"
+    ></script>
+
     <style>
-      /* Estilos para toasts */
-      .toast-container {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 2000;
-      }
-
-      .toast {
-        min-width: 250px;
-        margin-top: 10px;
-        padding: 15px;
-        border-radius: 4px;
-        color: white;
-        font-weight: 500;
-        opacity: 0;
-        transform: translateY(20px);
-        transition: all 0.3s ease-in-out;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-      }
-
-      .toast.show {
-        opacity: 1;
-        transform: translateY(0);
-      }
-
-      .toast.success {
-        background-color: #4caf50;
-      }
-
-      .toast.error {
-        background-color: #f44336;
-      }
-
-      .toast.info {
-        background-color: #2196f3;
-      }
-
-      .toast-close {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 16px;
-        cursor: pointer;
-        margin-left: 10px;
-        padding: 0 5px;
-      }
-
-      .toast-message {
-        flex-grow: 1;
-      }
       body {
         font-family: Arial, sans-serif;
-        max-width: 800px;
+        max-width: 900px;
         margin: 0 auto;
         padding: 20px;
       }
@@ -73,11 +36,6 @@
         border: 1px solid #ddd;
         padding: 15px;
         border-radius: 5px;
-      }
-      textarea {
-        width: 100%;
-        height: 100px;
-        margin-bottom: 10px;
       }
       button {
         background-color: #4285f4;
@@ -96,22 +54,6 @@
       }
       button.delete:hover {
         background-color: #b71c1c;
-      }
-      .exception-item {
-        border: 1px solid #eee;
-        padding: 10px;
-        margin-bottom: 10px;
-        border-radius: 4px;
-      }
-      .time-window {
-        margin-left: 20px;
-        margin-bottom: 5px;
-      }
-      .actions {
-        margin-top: 20px;
-      }
-      #importExport {
-        margin-top: 30px;
       }
 
       /* Estilos para os modais */
@@ -201,6 +143,81 @@
       .add-time-window {
         margin-top: 10px;
       }
+
+      /* Estilos para toasts */
+      .toast-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 2000;
+      }
+      .toast {
+        min-width: 250px;
+        margin-top: 10px;
+        padding: 15px;
+        border-radius: 4px;
+        color: white;
+        font-weight: 500;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.3s ease-in-out;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .toast.success {
+        background-color: #4caf50;
+      }
+      .toast.error {
+        background-color: #f44336;
+      }
+      .toast.info {
+        background-color: #2196f3;
+      }
+      .toast-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        margin-left: 10px;
+        padding: 0 5px;
+      }
+      .toast-message {
+        flex-grow: 1;
+      }
+
+      /* Estilos para DataTables */
+      .dataTables_wrapper {
+        margin-top: 20px;
+        margin-bottom: 20px;
+      }
+      table.dataTable {
+        width: 100% !important;
+        border-collapse: collapse;
+      }
+      table.dataTable thead th {
+        background-color: #f5f5f5;
+        padding: 10px;
+        text-align: left;
+      }
+      table.dataTable tbody td {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+      }
+      .action-buttons {
+        display: flex;
+        gap: 5px;
+      }
+      .action-buttons button {
+        padding: 5px 10px;
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
@@ -208,29 +225,106 @@
 
     <div class="section">
       <h2>Domínios Bloqueados</h2>
-      <p>Digite um domínio por linha (ex: exemplo.com)</p>
-      <textarea id="blockedDomains"></textarea>
-      <button id="saveBlockedDomains">Salvar Domínios</button>
+      <button id="addBlockedDomain" style="margin-bottom: 15px">
+        Adicionar Novo Domínio
+      </button>
+
+      <!-- Tabela para DataTables de domínios bloqueados -->
+      <table id="blockedDomainsTable" class="display" style="width: 100%">
+        <thead>
+          <tr>
+            <th>Domínio</th>
+            <th>Horários de Bloqueio</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Dados serão preenchidos via JavaScript -->
+        </tbody>
+      </table>
     </div>
 
     <div class="section">
       <h2>URLs de Exceção</h2>
-      <div id="exceptionsList"></div>
-      <button id="addException">Adicionar Nova Exceção</button>
+      <button id="addException" style="margin-bottom: 15px">
+        Adicionar Nova Exceção
+      </button>
+
+      <!-- Tabela para DataTables de exceções -->
+      <table id="exceptionsTable" class="display" style="width: 100%">
+        <thead>
+          <tr>
+            <th>URL</th>
+            <th>Horários Permitidos</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Dados serão preenchidos via JavaScript -->
+        </tbody>
+      </table>
     </div>
 
     <div class="section" id="importExport">
       <h2>Importar/Exportar Configurações</h2>
       <button id="exportConfig">Exportar Configurações</button>
       <button id="importConfig">Importar Configurações</button>
+      <button id="checkAllTabs">Verificar Todas as Abas Abertas</button>
       <input type="file" id="importFile" style="display: none" accept=".json" />
+    </div>
+
+    <!-- Modal para adicionar/editar domínio bloqueado -->
+    <div id="domainModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="domainModalTitle">Adicionar Domínio Bloqueado</h2>
+          <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+          <form id="domainForm">
+            <input type="hidden" id="domainIndex" value="-1" />
+
+            <div class="form-group">
+              <label for="domainName">Domínio:</label>
+              <input
+                type="text"
+                id="domainName"
+                placeholder="exemplo.com"
+                required
+              />
+            </div>
+
+            <div class="time-windows-container">
+              <h3>Janelas de Tempo para Bloqueio</h3>
+              <p>
+                Defina os dias e horários em que este domínio será bloqueado. Se
+                não definir nenhum horário, o domínio será sempre bloqueado.
+              </p>
+
+              <div id="domainTimeWindowsList"></div>
+
+              <button
+                type="button"
+                class="add-time-window"
+                id="addDomainTimeWindow"
+              >
+                + Adicionar Janela de Tempo
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="cancelDomain">Cancelar</button>
+          <button type="button" id="saveDomain">Salvar</button>
+        </div>
+      </div>
     </div>
 
     <!-- Modal para adicionar/editar exceção -->
     <div id="exceptionModal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h2 id="modalTitle">Adicionar Exceção</h2>
+          <h2 id="exceptionModalTitle">Adicionar Exceção</h2>
           <span class="close">&times;</span>
         </div>
         <div class="modal-body">
@@ -251,9 +345,13 @@
               <h3>Janelas de Tempo</h3>
               <p>Defina os dias e horários em que esta URL será acessível.</p>
 
-              <div id="timeWindowsList"></div>
+              <div id="exceptionTimeWindowsList"></div>
 
-              <button type="button" class="add-time-window" id="addTimeWindow">
+              <button
+                type="button"
+                class="add-time-window"
+                id="addExceptionTimeWindow"
+              >
                 + Adicionar Janela de Tempo
               </button>
             </div>
@@ -274,8 +372,8 @@
           <span class="close">&times;</span>
         </div>
         <div class="modal-body">
-          <p>Tem certeza que deseja excluir esta exceção?</p>
-          <p id="deleteUrlDisplay"></p>
+          <p>Tem certeza que deseja excluir este item?</p>
+          <p id="deleteItemDisplay"></p>
         </div>
         <div class="modal-footer">
           <button type="button" id="cancelDelete">Cancelar</button>
@@ -285,6 +383,7 @@
         </div>
       </div>
     </div>
+
     <!-- Contêiner para toasts -->
     <div class="toast-container" id="toastContainer"></div>
 

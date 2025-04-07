@@ -22,6 +22,8 @@ function saveConfiguration() {
         exceptionUrls
     }).then(() => {
         console.log("Configuração salva com sucesso");
+        // Verificar todas as abas abertas após salvar configurações
+        checkAllOpenTabs();
     }).catch(error => {
         console.error("Erro ao salvar configurações:", error);
     });
@@ -68,8 +70,12 @@ function extractDomain(url) {
     }
 }
 
-// Função para verificar se o horário atual está dentro de uma janela de tempo permitida
-function isWithinAllowedTime(timeWindows) {
+// Função para verificar se o horário atual está dentro de uma janela de tempo
+function isWithinTimeWindow(timeWindows) {
+    if (!timeWindows || timeWindows.length === 0) {
+        return true; // Se não houver janelas de tempo, está sempre bloqueado
+    }
+
     const now = new Date();
     const currentDay = now.getDay(); // 0-6 (domingo-sábado)
     const currentHour = now.getHours() + (now.getMinutes() / 60); // Hora atual com fração
@@ -83,6 +89,10 @@ function isWithinAllowedTime(timeWindows) {
 
 // Função para formatar as janelas de tempo para exibição ao usuário
 function formatTimeWindows(timeWindows) {
+    if (!timeWindows || timeWindows.length === 0) {
+        return "Sempre bloqueado";
+    }
+
     const dayNames = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
     return timeWindows.map(window => {
@@ -93,23 +103,30 @@ function formatTimeWindows(timeWindows) {
             (window.endHour % 1 ? Math.round((window.endHour % 1) * 60).toString().padStart(2, '0') : "00");
 
         return `${days} das ${start} às ${end}`;
-    }).join("; ");
+    }).join("<br>");
 }
 
-// Função que será chamada antes de cada requisição de navegação
-function blockRequest(requestDetails) {
-    console.log("Interceptando:", requestDetails.url);
+// Função para verificar se uma URL deve ser bloqueada
+function shouldBlockUrl(url) {
+    console.log("Verificando URL:", url);
 
-    const url = requestDetails.url;
     const domain = extractDomain(url);
 
     // Verifica se o domínio está na lista de domínios bloqueados
-    const isDomainBlocked = blockedDomains.some(blockedDomain =>
-        domain === blockedDomain || domain.endsWith("." + blockedDomain));
+    const blockedDomain = blockedDomains.find(bd =>
+        domain === bd.domain || domain.endsWith("." + bd.domain));
 
-    if (!isDomainBlocked) {
+    if (!blockedDomain) {
         console.log("Permitido (domínio não bloqueado):", url);
-        return; // Permite acesso
+        return { blocked: false };
+    }
+
+    // Verifica se está dentro do horário de bloqueio para este domínio
+    if (blockedDomain.timeWindows && blockedDomain.timeWindows.length > 0) {
+        if (!isWithinTimeWindow(blockedDomain.timeWindows)) {
+            console.log("Permitido (fora do horário de bloqueio):", url);
+            return { blocked: false };
+        }
     }
 
     // Verifica se a URL está na lista de exceções
@@ -117,28 +134,70 @@ function blockRequest(requestDetails) {
 
     if (!exception) {
         console.log("BLOQUEADO (domínio bloqueado):", url);
-        // Redireciona para página de bloqueio com mensagem
         return {
-            redirectUrl: browser.runtime.getURL("blocked.html") +
-                "?message=" + encodeURIComponent("Este domínio está bloqueado.")
+            blocked: true,
+            reason: "domain",
+            message: "Este domínio está bloqueado."
         };
     }
 
     // Verifica se está dentro do horário permitido para esta URL de exceção
-    if (isWithinAllowedTime(exception.timeWindows)) {
+    if (isWithinTimeWindow(exception.timeWindows)) {
         console.log("Permitido (exceção dentro do horário permitido):", url);
-        return; // Permite acesso
+        return { blocked: false };
     } else {
         console.log("BLOQUEADO (fora do horário permitido):", url);
-        // Redireciona para página de bloqueio com informações sobre horários permitidos
         const allowedTimes = formatTimeWindows(exception.timeWindows);
         return {
-            redirectUrl: browser.runtime.getURL("blocked.html") +
-                "?message=" + encodeURIComponent(
-                    "Esta URL só é permitida nos seguintes horários: " + allowedTimes
-                )
+            blocked: true,
+            reason: "time",
+            message: "Esta URL só é permitida nos seguintes horários: " + allowedTimes
         };
     }
+}
+
+// Função que será chamada antes de cada requisição de navegação
+function blockRequest(requestDetails) {
+    const result = shouldBlockUrl(requestDetails.url);
+
+    if (result.blocked) {
+        // Redireciona para página de bloqueio com mensagem
+        return {
+            redirectUrl: browser.runtime.getURL("blocked.html") +
+                "?message=" + encodeURIComponent(result.message) +
+                "&url=" + encodeURIComponent(requestDetails.url)
+        };
+    }
+
+    // Se não estiver bloqueado, permite a requisição continuar
+    return {};
+}
+
+// Função para verificar e bloquear uma aba específica
+function checkAndBlockTab(tab) {
+    if (!tab.url || tab.url.startsWith("about:") || tab.url.startsWith("moz-extension:") || tab.url.startsWith("chrome-extension:")) {
+        return; // Ignora abas internas do navegador
+    }
+
+    const result = shouldBlockUrl(tab.url);
+
+    if (result.blocked) {
+        // Redireciona a aba para a página de bloqueio
+        const blockPageUrl = browser.runtime.getURL("blocked.html") +
+            "?message=" + encodeURIComponent(result.message) +
+            "&url=" + encodeURIComponent(tab.url);
+
+        browser.tabs.update(tab.id, { url: blockPageUrl });
+    }
+}
+
+// Função para verificar todas as abas abertas
+function checkAllOpenTabs() {
+    browser.tabs.query({}).then(tabs => {
+        tabs.forEach(tab => {
+            checkAndBlockTab(tab);
+        });
+    });
 }
 
 // Adiciona o listener para o evento onBeforeRequest
@@ -152,6 +211,17 @@ function setupWebRequestListener() {
         ["blocking"]
     );
     console.log("Listener de bloqueio configurado");
+}
+
+// Adiciona listener para mudanças de URL em abas (para SPAs)
+function setupTabUpdateListener() {
+    browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+        // Verifica se a URL da aba mudou
+        if (changeInfo.url) {
+            checkAndBlockTab(tab);
+        }
+    });
+    console.log("Listener de atualização de abas configurado");
 }
 
 // Configurar mensagens para comunicação com a interface do usuário
@@ -187,15 +257,34 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     else if (message.action === "exportConfig") {
         sendResponse({ jsonData: exportConfigToJson() });
     }
+    else if (message.action === "checkAllTabs") {
+        checkAllOpenTabs();
+        sendResponse({ success: true });
+    }
+    else if (message.action === "checkUrl") {
+        const result = shouldBlockUrl(message.url);
+        sendResponse(result);
+    }
 });
 
 // Inicialização
 function init() {
     loadConfiguration().then(() => {
         setupWebRequestListener();
+        setupTabUpdateListener();
+
+        // Verificar todas as abas abertas na inicialização
+        checkAllOpenTabs();
+
         console.log("Extensão de Controle de Acesso Granular Ativa!");
     });
 }
+
+// Adicionar listener para quando a extensão é instalada ou atualizada
+browser.runtime.onInstalled.addListener(() => {
+    console.log("Extensão instalada ou atualizada");
+    init();
+});
 
 // Iniciar a extensão
 init();

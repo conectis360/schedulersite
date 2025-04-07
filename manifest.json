@@ -1,18 +1,17 @@
 {
   "manifest_version": 2,
-  "name": "Schedulersite",
+  "name": "Bloqueador de Sites com Exceções",
   "version": "1.0",
-  "description": "Block sites using a schedule for you to see when you want/need.",
+  "description": "Bloqueia domínios com exceções baseadas em URL e horário",
   "permissions": [
     "webRequest",
     "webRequestBlocking",
     "storage",
+    "tabs",
     "<all_urls>"
   ],
   "background": {
-    "scripts": [
-      "background.js"
-    ],
+    "scripts": ["background.js"],
     "persistent": true
   },
   "options_ui": {
@@ -21,5 +20,9 @@
   },
   "browser_action": {
     "default_title": "Bloqueador de Sites"
-  }
+  },
+  "web_accessible_resources": [
+    "blocked.html"
+  ],
+  "content_security_policy": "script-src 'self' https://code.jquery.com https://cdn.datatables.net; object-src 'self'"
 }
