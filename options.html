@@ -4,20 +4,26 @@
     <meta charset="UTF-8" />
     <title>Configurações de Bloqueio</title>
 
-    <!-- jQuery via CDN -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Add this in the <head> section of options.html -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' https://code.jquery.com https://cdn.datatables.net; style-src 'self' https://cdn.datatables.net 'unsafe-inline'; img-src 'self' data:;"
+    />
 
-    <!-- DataTables CSS via CDN -->
+    <!-- jQuery local -->
+    <script src="./lib/jquery-3.6.0.min.js"></script>
+
+    <!-- DataTables CSS local -->
     <link
       rel="stylesheet"
       type="text/css"
-      href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css"
+      href="./lib/jquery.dataTables.min.css"
     />
 
-    <!-- DataTables JS via CDN -->
+    <!-- DataTables JS local -->
     <script
       type="text/javascript"
-      src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"
+      src="./lib/jquery.dataTables.min.js"
     ></script>
 
     <style>
@@ -387,6 +393,6 @@
     <!-- Contêiner para toasts -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="options.js"></script>
+    <script src="./js/options.js" type="module"></script>
   </body>
 </html>

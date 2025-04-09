@@ -1,11 +1,16 @@
-/**
- * Arquivo principal da página de opções
- */
-import ToastModule from './ui/toast.js';
-import ModalModule from './ui/modal.js';
-import TimeWindowManager from './ui/timeWindowManager.js';
+// Import dependencies from other modules  
+import * as storage from './modules/storage.js';
+import * as timeUtils from './modules/timeUtils.js';
+import * as urlUtils from './modules/urlUtils.js';
+import * as blockingService from './modules/blockingService.js';
+import * as tabManager from './modules/tabManager.js';
+import * as messageHandler from './modules/messageHandler.js';
+
 import DomainTableModule from './ui/domainTable.js';
 import ExceptionTableModule from './ui/exceptionTable.js';
+import ModalModule from './ui/modal.js';
+import ToastModule from './ui/toast.js';
+import TimeWindowManager from './ui/timeWindowManager.js';
 import ImportExportModule from './ui/importExport.js';
 
 // Quando o DOM estiver carregado
