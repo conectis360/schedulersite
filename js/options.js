@@ -7,6 +7,7 @@ import * as tabManager from './modules/tabManager.js';
 import * as messageHandler from './modules/messageHandler.js';
 
 import DomainTableModule from './ui/domainTable.js';
+import NotificationService from './ui/notificationService.js';
 import ExceptionTableModule from './ui/exceptionTable.js';
 import ModalModule from './ui/modal.js';
 import ToastModule from './ui/toast.js';
@@ -70,6 +71,9 @@ document.addEventListener('DOMContentLoaded', () => {
         exceptionUrlInput,
         exceptionTimeWindowsList
     });
+
+    // Inicializar serviço de notificações  
+    NotificationService.init();
 
     // Configurar modais
     ModalModule.setupModalClosers([domainModal, exceptionModal, deleteModal]);

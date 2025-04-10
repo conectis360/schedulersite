@@ -5,6 +5,7 @@ import StorageModule from './js/modules/storage.js';
 import BlockingService from './js/modules/blockingService.js';
 import TabManager from './js/modules/tabManager.js';
 import MessageHandler from './js/modules/messageHandler.js';
+import NotificationService from './ui/notificationService.js';
 
 // Inicialização
 function init() {
@@ -29,6 +30,7 @@ function init() {
         // Verificar todas as abas abertas na inicialização
         TabManager.checkAllOpenTabs();
 
+
         console.log("Extensão de Controle de Acesso Granular Ativa!");
     });
 }
@@ -36,6 +38,7 @@ function init() {
 // Adicionar listener para quando a extensão é instalada ou atualizada
 browser.runtime.onInstalled.addListener(() => {
     console.log("Extensão instalada ou atualizada");
+    NotificationService.init();
     init();
 });
 
