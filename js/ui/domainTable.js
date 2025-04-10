@@ -43,10 +43,11 @@ const DomainTableModule = (() => {
         const tableData = domains.map((domain, index) => {
             return [
                 domain.domain,
+                domain.title || domain.domain, // Mostrar título ou domínio se não houver título  
                 TimeUtils.formatTimeWindows(domain.timeWindows),
-                `<div class="action-buttons">
-                    <button class="edit-domain-btn" data-index="${index}">Editar</button>
-                    <button class="delete-domain-btn delete" data-index="${index}">Excluir</button>
+                `<div class="action-buttons">  
+                    <button class="edit-domain-btn" data-index="${index}">Editar</button>  
+                    <button class="delete-domain-btn delete" data-index="${index}">Excluir</button>  
                 </div>`
             ];
         });
@@ -56,6 +57,7 @@ const DomainTableModule = (() => {
             data: tableData,
             columns: [
                 { title: "Domínio" },
+                { title: "Título" }, // Nova coluna  
                 { title: "Horários de Bloqueio" },
                 { title: "Ações", width: "120px" }
             ],
@@ -115,6 +117,7 @@ const DomainTableModule = (() => {
         domainModalTitle.textContent = 'Adicionar Domínio Bloqueado';
         domainIndexInput.value = -1;
         domainNameInput.value = '';
+        domainTitleInput.value = ''; // Novo campo para título  
         domainTimeWindowsList.innerHTML = '';
 
         ModalModule.openModal(domainModal);
@@ -132,6 +135,7 @@ const DomainTableModule = (() => {
                 domainModalTitle.textContent = 'Editar Domínio Bloqueado';
                 domainIndexInput.value = index;
                 domainNameInput.value = domain.domain;
+                domainTitleInput.value = domain.title || ''; // Carregar título existente
 
                 domainTimeWindowsList.innerHTML = '';
 
@@ -155,6 +159,7 @@ const DomainTableModule = (() => {
      */
     const saveDomain = () => {
         const domain = domainNameInput.value.trim();
+        const title = domainTitleInput.value.trim(); // Obter título
 
         if (!domain) {
             ToastModule.showErrorToast("Por favor, informe o domínio a ser bloqueado.");
@@ -182,6 +187,7 @@ const DomainTableModule = (() => {
 
                 const newDomain = {
                     domain,
+                    title,
                     timeWindows
                 };
 
