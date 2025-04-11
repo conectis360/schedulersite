@@ -1,7 +1,7 @@
 /**
  * Módulo para gerenciar importação e exportação de configurações
  */
-import ToastModule from './toast.js';
+import ToastModule from './ToastModule.js';
 
 const ImportExportModule = (() => {
     /**

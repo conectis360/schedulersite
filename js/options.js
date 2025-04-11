@@ -7,12 +7,14 @@ import * as tabManager from './modules/tabManager.js';
 import * as messageHandler from './modules/messageHandler.js';
 
 import DomainTableModule from './ui/domainTable.js';
-import NotificationService from './ui/notificationService.js';
+import NotificationService from './modules/notificationService.js';
 import ExceptionTableModule from './ui/exceptionTable.js';
-import ModalModule from './ui/modal.js';
-import ToastModule from './ui/toast.js';
+import ModalModule from './ui/ModalModule.js';
+import ToastModule from './ui/ToastModule.js';
 import TimeWindowManager from './ui/timeWindowManager.js';
 import ImportExportModule from './ui/importExport.js';
+// Adicionar importação no topo do arquivo
+import SiteNotesTableModule from './ui/siteNotesTable.js';
 
 // Quando o DOM estiver carregado
 document.addEventListener('DOMContentLoaded', () => {
@@ -54,6 +56,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Variável para armazenar o tipo de item sendo excluído
     let deleteItemType = '';
+
+    SiteNotesTableModule.init();
+    SiteNotesTableModule.setupTableListeners();
 
     // Inicializar módulos
     DomainTableModule.init({

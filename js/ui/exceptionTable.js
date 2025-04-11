@@ -2,9 +2,9 @@
  * Módulo para gerenciar a tabela de exceções
  */
 import TimeUtils from '../modules/timeUtils.js';
-import ModalModule from './modal.js';
+import ModalModule from './ModalModule.js';
 import TimeWindowManager from './timeWindowManager.js';
-import ToastModule from './toast.js';
+import ToastModule from './ToastModule.js';
 
 const ExceptionTableModule = (() => {
     // Variável para armazenar a instância do DataTable
