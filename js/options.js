@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const domainForm = document.getElementById('domainForm');
     const domainIndexInput = document.getElementById('domainIndex');
     const domainNameInput = document.getElementById('domainName');
+    const domainTitleInput = document.getElementById('domainTitle');
     const domainTimeWindowsList = document.getElementById('domainTimeWindowsList');
     const addDomainTimeWindowButton = document.getElementById('addDomainTimeWindow');
     const saveDomainButton = document.getElementById('saveDomain');
@@ -66,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         domainModalTitle,
         domainIndexInput,
         domainNameInput,
+        domainTitleInput,
         domainTimeWindowsList
     });
 

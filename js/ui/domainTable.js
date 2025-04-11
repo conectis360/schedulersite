@@ -15,6 +15,7 @@ const DomainTableModule = (() => {
     let domainModalTitle;
     let domainIndexInput;
     let domainNameInput;
+    let domainTitleInput;
     let domainTimeWindowsList;
 
     /**
@@ -26,6 +27,7 @@ const DomainTableModule = (() => {
         domainModalTitle = elements.domainModalTitle;
         domainIndexInput = elements.domainIndexInput;
         domainNameInput = elements.domainNameInput;
+        domainTitleInput = elements.domainTitleInput;
         domainTimeWindowsList = elements.domainTimeWindowsList;
     };
 

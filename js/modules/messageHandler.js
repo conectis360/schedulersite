@@ -12,7 +12,9 @@ const MessageHandler = (() => {
     const setupMessageListener = () => {
         browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (message.action === "getConfig") {
-                sendResponse(StorageModule.getConfig());
+                return browser.storage.local.get().then(data => {
+                    return data.config || defaultConfig;
+                });
             }
             else if (message.action === "updateConfig") {
                 if (message.blockedDomains) {
