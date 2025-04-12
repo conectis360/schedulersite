@@ -5,7 +5,7 @@ import StorageModule from './js/modules/storage.js';
 import BlockingService from './js/modules/blockingService.js';
 import TabManager from './js/modules/tabManager.js';
 import MessageHandler from './js/modules/messageHandler.js';
-import NotificationService from './js/ui/notificationService.js';
+import NotificationService from './js/modules/notificationService.js';
 
 // Configuração padrão
 const defaultConfig = {
