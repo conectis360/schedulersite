@@ -411,7 +411,8 @@ const StickyNotesModule = (() => {
 
     // API pública do módulo
     return {
-        init
+        init,
+        createNewNote
     };
 })();
 
