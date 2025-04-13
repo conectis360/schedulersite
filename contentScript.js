@@ -1,7 +1,12 @@
-// Importar o módulo de notas
-import StickyNotesModule from './js/stickyNotes.js';
+// Importar o módulo de sticky notes
+import StickyNotesModule from './js/ui/stickyNotes.js';
 
-// Inicializar o módulo quando a página estiver carregada
+// Inicializar o módulo quando a página carregar completamente
 document.addEventListener('DOMContentLoaded', () => {
     StickyNotesModule.init();
 });
+
+// Também inicializar se o documento já estiver carregado
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    StickyNotesModule.init();
+}
