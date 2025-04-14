@@ -17,7 +17,13 @@ const BlockingService = (() => {
         const domain = UrlUtils.extractDomain(url);
         const config = StorageModule.getConfig();
 
-        // Verifica se o domínio está na lista de domínios bloqueados
+        // Verificar se config e blockedDomains existem  
+        if (!config || !config.blockedDomains) {
+            console.error("Configuração inválida:", config);
+            return { blocked: false };
+        }
+
+        // Verifica se o domínio está na lista de domínios bloqueados  
         const blockedDomain = config.blockedDomains.find(bd =>
             typeof bd === 'string'
                 ? UrlUtils.domainMatches(domain, bd)

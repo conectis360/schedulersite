@@ -9,6 +9,9 @@ const defaultConfig = {
     siteNotes: []
 };
 
+// Variável para armazenar a configuração em memória
+let cachedConfig = null;
+
 /**
  * Carrega a configuração do armazenamento local
  * @returns {Promise} Promessa que resolve para a configuração
@@ -19,14 +22,32 @@ const loadConfiguration = () => {
             if (!data.config) {
                 // Se não houver configuração, inicializar com valores padrão
                 return browser.storage.local.set({ config: defaultConfig })
-                    .then(() => defaultConfig);
+                    .then(() => {
+                        cachedConfig = { ...defaultConfig };
+                        return cachedConfig;
+                    });
             }
-            return data.config;
+            cachedConfig = data.config;
+            return cachedConfig;
         })
         .catch(error => {
             console.error("Erro ao carregar configuração:", error);
-            return defaultConfig;
+            cachedConfig = { ...defaultConfig };
+            return cachedConfig;
         });
+};
+
+/**
+ * Obtém a configuração atual (síncrono)
+ * @returns {Object} Configuração atual
+ */
+const getConfig = () => {
+    if (cachedConfig === null) {
+        // Se a configuração ainda não foi carregada, retornar a padrão
+        console.warn("Configuração não carregada, usando padrão");
+        return { ...defaultConfig };
+    }
+    return cachedConfig;
 };
 
 /**
@@ -35,6 +56,7 @@ const loadConfiguration = () => {
  * @returns {Promise} Promessa que resolve quando a configuração for salva
  */
 const saveConfiguration = (config) => {
+    cachedConfig = { ...config };
     return browser.storage.local.set({ config })
         .then(() => ({ success: true }))
         .catch(error => {
@@ -49,22 +71,36 @@ const saveConfiguration = (config) => {
  * @returns {Promise} Promessa que resolve quando a configuração for atualizada
  */
 const updateConfiguration = (updates) => {
-    return loadConfiguration()
-        .then(config => {
-            const newConfig = { ...config };
+    if (cachedConfig) {
+        // Se temos a configuração em cache, atualizamos diretamente
+        const newConfig = { ...cachedConfig };
 
-            // Aplicar atualizações
-            Object.keys(updates).forEach(key => {
-                newConfig[key] = updates[key];
-            });
-
-            return saveConfiguration(newConfig);
+        // Aplicar atualizações
+        Object.keys(updates).forEach(key => {
+            newConfig[key] = updates[key];
         });
+
+        return saveConfiguration(newConfig);
+    } else {
+        // Caso contrário, carregamos primeiro
+        return loadConfiguration()
+            .then(config => {
+                const newConfig = { ...config };
+
+                // Aplicar atualizações
+                Object.keys(updates).forEach(key => {
+                    newConfig[key] = updates[key];
+                });
+
+                return saveConfiguration(newConfig);
+            });
+    }
 };
 
 export default {
     defaultConfig,
     loadConfiguration,
     saveConfiguration,
-    updateConfiguration
+    updateConfiguration,
+    getConfig
 };
